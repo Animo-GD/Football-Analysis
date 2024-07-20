@@ -4,3 +4,4 @@ pretrainned/*
 utils/__pycache__/
 tracking/__pycache__/
 Input_videos/*
+!*.md
