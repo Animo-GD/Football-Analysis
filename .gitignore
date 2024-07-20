@@ -1,4 +1,4 @@
-Input_videos/*
+/Input_videos/*
 Output_videos/*
 models/*
 pretrainned/*
