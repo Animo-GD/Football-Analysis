@@ -1,7 +1,7 @@
-Output_videos/*
+**/*.avi
+**/*.mp4
 models/*
 pretrainned/*
-utils/__pycache__/
-tracking/__pycache__/
-Input_videos/*
+**/__pycache__/
 !*.md
+
