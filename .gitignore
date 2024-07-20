@@ -1,0 +1,6 @@
+Input_videos/*
+Output_videos/*
+models/*
+pretrainned/*
+utils/__pycache__/
+tracking/__pycache__/
