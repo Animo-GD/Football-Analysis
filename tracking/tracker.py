@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import supervision as sv
 import pickle
 import numpy as np
+import pandas as pd
 import cv2
 import os
 import sys
@@ -13,7 +14,19 @@ class Tracker:
     def __init__(self,model_path):
         self.model = YOLO(model_path)
         self.tracker = sv.ByteTrack()
-        self.names = {"ball":0,"goalkeeper":1,"player":2,"referee":3}
+
+
+    def interpolate_ball_pos(self,ball_pos):
+        ball_pos = [x.get(1,{}).get("bbox",[]) for x in ball_pos]
+        df_ball_pos = pd.DataFrame(ball_pos,columns=['x1','y1','x2','y2'])
+        #Interpolate Missing Values
+        df_ball_pos = df_ball_pos.interpolate()
+        df_ball_pos = df_ball_pos.bfill()   
+        # 1 is for track_id
+        ball_pos = [{1:{"bbox":x}} for x in df_ball_pos.to_numpy().tolist()]
+
+        return ball_pos
+
 
     def detect_frames(self,frames):
         batch_size=20
@@ -25,65 +38,69 @@ class Tracker:
         return detections
     
 
-    def get_object_tracks(self,frames,trainable=False,trained_model_path=None):
-
-        if trainable and trained_model_path and os.path.exists(trained_model_path):
-            with open(trained_model_path,'rb') as f:
-                tracked_objects = pickle.load(f)
-            return tracked_objects
-
-
+    def get_object_tracks(self, frames, read_from_stub=False, stub_path=None):
+        
+        if read_from_stub and stub_path is not None and os.path.exists(stub_path):
+            with open(stub_path,'rb') as f:
+                tracks = pickle.load(f)
+            return tracks
 
         detections = self.detect_frames(frames)
-        tracked_objects = {
+
+        tracks={
             "players":[],
             "referees":[],
-            "ball":[],
-            "goalkeepers":[]
+            "ball":[]
         }
-        for frame_num,detection in enumerate(detections):
+
+        for frame_num, detection in enumerate(detections):
             cls_names = detection.names
+            cls_names_inv = {v:k for k,v in cls_names.items()}
+
+            # Covert to supervision Detection format
             detection_supervision = sv.Detections.from_ultralytics(detection)
 
+            # Convert GoalKeeper to player object
+            for object_ind , class_id in enumerate(detection_supervision.class_id):
+                if cls_names[class_id] == "goalkeeper":
+                    detection_supervision.class_id[object_ind] = cls_names_inv["player"]
+
             # Track Objects
-            detection_track = self.tracker.update_with_detections(detection_supervision)
-            tracked_objects["players"].append({})
-            tracked_objects["ball"].append({})
-            tracked_objects["goalkeepers"].append({})
-            tracked_objects["referees"].append({})
+            detection_with_tracks = self.tracker.update_with_detections(detection_supervision)
 
-            # supervision result = array[[xyxy],[mask],[conf_array],[class_id],[track_id]]
-            for tracks in detection_track:
-                bbox = tracks[0].tolist()
-                cls_id = tracks[3].tolist()
-                track_id = tracks[4].tolist()
+            tracks["players"].append({})
+            tracks["referees"].append({})
+            tracks["ball"].append({})
 
-                if cls_id == self.names["player"]:
-                    tracked_objects["players"][frame_num][track_id] = {"bbox":bbox}
-                if cls_id == self.names["goalkeeper"]:
-                    tracked_objects["goalkeepers"][frame_num][track_id] = {"bbox":bbox}
-                if cls_id == self.names["referee"]:
-                    tracked_objects["referees"][frame_num][track_id] = {"bbox":bbox}
-                # {   "players":[{track_id:bbox},{track_id:bbox}]} ...
+            for frame_detection in detection_with_tracks:
+                bbox = frame_detection[0].tolist()
+                cls_id = frame_detection[3]
+                track_id = frame_detection[4]
 
+                if cls_id == cls_names_inv['player']:
+                    tracks["players"][frame_num][track_id] = {"bbox":bbox}
+                
+                if cls_id == cls_names_inv['referee']:
+                    tracks["referees"][frame_num][track_id] = {"bbox":bbox}
             
             for frame_detection in detection_supervision:
                 bbox = frame_detection[0].tolist()
                 cls_id = frame_detection[3]
 
-                if cls_id == self.names["ball"]:
-                   tracked_objects["ball"][frame_num][1] = {"bbox":bbox}
+                if cls_id == cls_names_inv['ball']:
+                    tracks["ball"][frame_num][1] = {"bbox":bbox}
 
-        if trained_model_path:
-            with open(trained_model_path,'wb') as f:
-                pickle.dump(tracked_objects,f)
-        return tracked_objects
+        if stub_path is not None:
+            with open(stub_path,'wb') as f:
+                pickle.dump(tracks,f)
+        print(tracks["ball"])
+        return tracks
     
 
 
     def draw_ellipse(self,frame,bbox,color,track_id=None):
         y2 = int(bbox[3])
-        x_center = int(get_box_center(bbox))
+        x_center = int(get_box_center(bbox)[0])
         width = get_box_width(bbox)
         cv2.ellipse(
             img=frame,
@@ -120,7 +137,7 @@ class Tracker:
 
     def draw_triangle(self,frame,bbox,color):
         y = int(bbox[1])
-        x = int(get_box_center(bbox))
+        x = int(get_box_center(bbox)[0])
         triangle_points = np.array(
             [[x,y],
             [x-10,y-20],
@@ -136,7 +153,6 @@ class Tracker:
         for frame_num, frame in enumerate(video_frames):
             frame = frame.copy()
             players_dict = tracks["players"][frame_num]
-            goalkeepers_dict = tracks["goalkeepers"][frame_num]
             ball_dict = tracks["ball"][frame_num]
             referees_dict = tracks["referees"][frame_num]
 
@@ -146,17 +162,15 @@ class Tracker:
                 color = player.get("team_color",(0,0,255))
                 frame = self.draw_ellipse(frame,player["bbox"],color,track_id)
 
+                if player.get("has_ball",False):
+                    frame = self.draw_triangle(frame,player["bbox"],(0,0,255))
+
 
             # Draw Referee
             for _,referee in referees_dict.items():
                 frame = self.draw_ellipse(frame,referee["bbox"],(0,255,255))
 
          
-
-            # Draw goalkeeper
-
-            for _,goalkeeper in goalkeepers_dict.items():
-                frame = self.draw_ellipse(frame,goalkeeper["bbox"],(255,255,0))
 
             # Draw ball
 
