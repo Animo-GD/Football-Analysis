@@ -2,6 +2,7 @@ from utils import read_video,save_video,crop_player
 from tracking import Tracker
 from team_assigner import teamAssigner
 from player_ball_assigner import playerBallAssigner
+from camera_movement_estimator import cameraMovementEstimator
 import cv2
 import numpy as np
 def main():
@@ -23,7 +24,11 @@ def main():
     # Interpolate the ball position
     tracks["ball"] = tracker.interpolate_ball_pos(tracks["ball"])
 
-   
+    # Camera Movement Estimator
+    camera_movement_estimator = cameraMovementEstimator(video_frames[0])
+    camera_movement_per_frame = camera_movement_estimator.get_camera_movement(video_frames,
+                                       read_from_stub=True,
+                                       stub_path="pretrainned/camera_movement.pkl")
     # Assign Player Teams
     team_assigner = teamAssigner()
     team_assigner.assign_team_color(video_frames[0],tracks["players"][0])
@@ -58,8 +63,14 @@ def main():
     # crop_player(video_frames,tracks)
 
     # Draw Output
+
     # Draw Tracked Objects
     output_video_frames = tracker.draw_annotations(video_frames,tracks,team_ball_control)
+
+    # Draw Camera Movement
+    output_video_frames = camera_movement_estimator.draw_camera_movement(output_video_frames,camera_movement_per_frame)
+    
+
     # Save Video
     save_video(output_video_frames,"Output_videos/output_video.avi")
 
