@@ -1,4 +1,4 @@
-# Football Analysis Project Using Computer Vision:
+# Football Analysis
 
  - Detect and track players, ball, referees and goalkeepers
 
@@ -39,7 +39,8 @@
    - The Script will take a while at the first run but after that it will save the process so you can run it fast the next time.
  --------------
  **Dataset Used** :
+ 
  [football-players-detection](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc/dataset/1)
  --------------
  **Final Result** : 
- 
+ ![result](result.png)
