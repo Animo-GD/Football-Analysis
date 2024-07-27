@@ -7,7 +7,7 @@ import cv2
 import os
 import sys
 sys.path.append("../")
-from utils import get_box_center,get_box_width
+from utils import get_box_center,get_box_width,get_foot_position
 
 
 class Tracker:
@@ -15,6 +15,16 @@ class Tracker:
         self.model = YOLO(model_path)
         self.tracker = sv.ByteTrack()
 
+    def add_positions_to_tracks(sekf,tracks):
+        for object, object_tracks in tracks.items():
+            for frame_num, track in enumerate(object_tracks):
+                for track_id, track_info in track.items():
+                    bbox = track_info['bbox']
+                    if object == 'ball':
+                        position= get_box_center(bbox)
+                    else:
+                        position = get_foot_position(bbox)
+                    tracks[object][frame_num][track_id]['position'] = position
 
     def interpolate_ball_pos(self,ball_pos):
         ball_pos = [x.get(1,{}).get("bbox",[]) for x in ball_pos]
@@ -93,7 +103,6 @@ class Tracker:
         if stub_path is not None:
             with open(stub_path,'wb') as f:
                 pickle.dump(tracks,f)
-        print(tracks["ball"])
         return tracks
     
 

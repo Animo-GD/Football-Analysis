@@ -18,6 +18,8 @@ def main():
                                        stub_path="pretrainned/trained_tracks.pkl")
     
 
+    # Get Object Position
+    tracker.add_positions_to_tracks(tracks)
 
 
     
@@ -29,6 +31,8 @@ def main():
     camera_movement_per_frame = camera_movement_estimator.get_camera_movement(video_frames,
                                        read_from_stub=True,
                                        stub_path="pretrainned/camera_movement.pkl")
+    
+    camera_movement_estimator.add_adjust_positions_to_tracks(tracks,camera_movement_per_frame)
     # Assign Player Teams
     team_assigner = teamAssigner()
     team_assigner.assign_team_color(video_frames[0],tracks["players"][0])
