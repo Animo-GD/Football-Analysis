@@ -33,7 +33,9 @@ class cameraMovementEstimator():
         for object, object_tracks in tracks.items():
             for frame_num, track in enumerate(object_tracks):
                 for track_id, track_info in track.items():
-                    position = track_info.get('position',(0,0))
+                    if "position" not in track_info:
+                        continue
+                    position = track_info['position']
                     camera_movement = camera_movement_per_frame[frame_num]
                     position_adjusted = (position[0]-camera_movement[0],position[1]-camera_movement[1])
                     tracks[object][frame_num][track_id]['position_adjusted'] = position_adjusted

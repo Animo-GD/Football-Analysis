@@ -4,6 +4,7 @@ from team_assigner import teamAssigner
 from player_ball_assigner import playerBallAssigner
 from camera_movement_estimator import cameraMovementEstimator
 from view_transformer import viewTransformer
+from speed_estimator import SpeedEstimator
 import cv2
 import numpy as np
 def main():
@@ -51,8 +52,10 @@ def main():
             tracks["players"][frame_num][player_id]["team"] = team
             tracks["players"][frame_num][player_id]["team_color"] = team_assigner.team_colors[team]
 
-
-     # Assign ball Aquisition
+    # Speed Estimator
+    speed_estimator = SpeedEstimator()
+    speed_estimator.add_speed_and_distance_to_tracks(tracks)
+    # Assign ball Aquisition
     player_assigner = playerBallAssigner()
     team_ball_control = []
 
@@ -78,7 +81,8 @@ def main():
 
     # Draw Camera Movement
     output_video_frames = camera_movement_estimator.draw_camera_movement(output_video_frames,camera_movement_per_frame)
-    
+    # Draw speed 
+    speed_estimator.draw_speed_and_distance(output_video_frames,tracks)
 
     # Save Video
     save_video(output_video_frames,"Output_videos/output_video.avi")

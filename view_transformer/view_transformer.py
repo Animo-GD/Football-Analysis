@@ -40,6 +40,8 @@ class viewTransformer:
         for object,object_tracks in tracks.items():
             for frame_num,track in enumerate(object_tracks):
                 for track_id,track_info in track.items():
+                    if "position_adjusted" not in track_info:
+                        continue
                     position = track_info["position_adjusted"]
                     position = np.array(position)
                     transformed_position = self.transform_position(position)
