@@ -3,6 +3,7 @@ from tracking import Tracker
 from team_assigner import teamAssigner
 from player_ball_assigner import playerBallAssigner
 from camera_movement_estimator import cameraMovementEstimator
+from view_transformer import viewTransformer
 import cv2
 import numpy as np
 def main():
@@ -33,6 +34,10 @@ def main():
                                        stub_path="pretrainned/camera_movement.pkl")
     
     camera_movement_estimator.add_adjust_positions_to_tracks(tracks,camera_movement_per_frame)
+
+    # Add View Transformer
+    view_transformer = viewTransformer()
+    view_transformer.add_transformerd_position_to_tracks(tracks)
     # Assign Player Teams
     team_assigner = teamAssigner()
     team_assigner.assign_team_color(video_frames[0],tracks["players"][0])
